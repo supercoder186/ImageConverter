@@ -26,8 +26,7 @@ def doConvert(file):
     write_lock.acquire()
     write_q.put((ddsfile, img))
     write_lock.release()
-    print('Converted', file)
-    delete(file)
+    print('Loaded', file)
     print("Number of files left:", q.qsize())
 
 
@@ -50,7 +49,6 @@ def process_data(id):
             qLock.acquire()
             file = q.get()
             qLock.release()
-            print("Thread #%s processing %s" % (id, file))
             process(file)
 
 
@@ -58,11 +56,13 @@ def write_data():
     global write_q, write_lock
     while not exit:
         if not write_q.empty():
-            write_lock.acquire()
+            # write_lock.acquire()
             file, img = write_q.get()
-            write_lock.release()
+            # write_lock.release()
             print("Writing file %s" % file)
             img.save(filename=file)
+            jpgfile = file.replace('dds', 'jpg')
+            delete(jpgfile)
 
 
 class converter(threading.Thread):
@@ -91,7 +91,15 @@ dir = glob.glob('*.jpg')
 count = len(dir)
 print(count)
 q = queue.Queue()
-write_q = queue.Queue()
+
+print('Calculate your write queue size by dividing the amount of RAM you wish to allocate by 80')
+wq_size_s = input('Write queue size (default 100): ')
+
+if wq_size_s:
+    write_q = queue.Queue(maxsize=int(wq_size_s))
+else:
+    write_q = queue.Queue(maxsize=100)
+
 qLock = threading.Lock()
 write_lock = threading.Lock()
 qLock.acquire()
