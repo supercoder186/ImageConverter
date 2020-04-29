@@ -23,6 +23,7 @@ def doConvert(file):
     ddsfile = file.replace('jpg', 'dds')
     img = image.Image(filename=file)
     img.compression = "dxt3"
+    img.format = 'dds'
     write_lock.acquire()
     write_q.put((ddsfile, img))
     write_lock.release()
@@ -42,9 +43,9 @@ def process(file):
         doConvert(file)
 
 
-def process_data(id):
+def process_data():
     global q
-    while not exit:
+    while not exitTask:
         if not q.empty():
             qLock.acquire()
             file = q.get()
@@ -54,11 +55,11 @@ def process_data(id):
 
 def write_data():
     global write_q, write_lock
-    while not exit:
+    while not exitTask:
         if not write_q.empty():
-            # write_lock.acquire()
+            write_lock.acquire()
             file, img = write_q.get()
-            # write_lock.release()
+            write_lock.release()
             print("Writing file %s" % file)
             img.save(filename=file)
             jpgfile = file.replace('dds', 'jpg')
@@ -66,13 +67,13 @@ def write_data():
 
 
 class converter(threading.Thread):
-    def __init__(self, id):
+    def __init__(self, threadid):
         threading.Thread.__init__(self)
-        self.id = id
+        self.id = threadid
 
     def run(self):
         print("Starting thread #%s" % self.id)
-        process_data(self.id)
+        process_data()
         print("Closing Thread #%s" % self.id)
 
 
@@ -86,26 +87,26 @@ class writer(threading.Thread):
         print('Closing write thread')
 
 
-exit = 0
-dir = glob.glob('*.jpg')
-count = len(dir)
+exitTask = 0
+dirlist = glob.glob('*.jpg')
+count = len(dirlist)
 print(count)
 q = queue.Queue()
 
 print('Calculate your write queue size by dividing the amount of RAM you wish to allocate by 80')
-wq_size_s = input('Write queue size (default 100): ')
+wq_size_s = input('Write queue size (default 10): ')
 
 if wq_size_s:
     write_q = queue.Queue(maxsize=int(wq_size_s))
 else:
-    write_q = queue.Queue(maxsize=100)
+    write_q = queue.Queue(maxsize=10)
 
 qLock = threading.Lock()
 write_lock = threading.Lock()
 qLock.acquire()
 threads = []
 
-for f in dir:
+for f in dirlist:
     q.put(f)
 
 qLock.release()
@@ -125,10 +126,14 @@ writer = writer()
 writer.start()
 threads.append(writer)
 
-while not (q.empty() and write_q.empty()):
-    pass
+try:
+    while not (q.empty() and write_q.empty()):
+        pass
+except KeyboardInterrupt:
+    exitTask = 1
+    os._exit(0)
 
-exit = 1
+exitTask = 1
 for t in threads:
     t.join()
 
