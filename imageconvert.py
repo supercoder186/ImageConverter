@@ -19,11 +19,13 @@ def delete(file):
 
 
 def doConvert(file):
-    global q
+    global write_q, q, write_lock
     ddsfile = file.replace('jpg', 'dds')
     img = image.Image(filename=file)
     img.compression = "dxt3"
-    img.save(filename=ddsfile)
+    write_lock.acquire()
+    write_q.put((ddsfile, img))
+    write_lock.release()
     print('Converted', file)
     delete(file)
     print("Number of files left:", q.qsize())
@@ -44,14 +46,23 @@ def process(file):
 def process_data(id):
     global q
     while not exit:
-        qLock.acquire()
         if not q.empty():
+            qLock.acquire()
             file = q.get()
             qLock.release()
             print("Thread #%s processing %s" % (id, file))
             process(file)
-        else:
-            qLock.release()
+
+
+def write_data():
+    global write_q, write_lock
+    while not exit:
+        if not write_q.empty():
+            write_lock.acquire()
+            file, img = write_q.get()
+            write_lock.release()
+            print("Writing file %s" % file)
+            img.save(filename=file)
 
 
 class converter(threading.Thread):
@@ -65,6 +76,16 @@ class converter(threading.Thread):
         print("Closing Thread #%s" % self.id)
 
 
+class writer(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        print('Starting write thread')
+        write_data()
+        print('Closing write thread')
+
+
 exit = 0
 dir = glob.glob('*.jpg')
 count = len(dir)
@@ -72,6 +93,7 @@ print(count)
 q = queue.Queue()
 write_q = queue.Queue()
 qLock = threading.Lock()
+write_lock = threading.Lock()
 qLock.acquire()
 threads = []
 
@@ -91,7 +113,11 @@ for i in range(thread_count):
     thread.start()
     threads.append(thread)
 
-while not q.empty():
+writer = writer()
+writer.start()
+threads.append(writer)
+
+while not (q.empty() and write_q.empty()):
     pass
 
 exit = 1
