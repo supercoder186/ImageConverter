@@ -1,0 +1,1 @@
+texconv.exe -m 13 -timing -f BC1_UNORM *.JPG
