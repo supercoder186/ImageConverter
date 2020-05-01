@@ -54,7 +54,8 @@ for i in range(len(gpu_list)):
     print(gpu_list[i], '->', i)
 
 index = int(input('Enter the index of the GPU you wish to use: '))
-command = 'texconv -m 13 -gpu %s -timing -f BC1_UNORM *.jpg' % index
+print('There are %s files to convert' % (len(glob.glob('*.jpg'))))
+command = 'texconv -m 13 -gpu %s -timing -f BC1_UNORM *.jpg' % index if index < len(gpu_list) else 0
 os.system(command)
 dirlist = glob.glob('*.jpg')
 for img in dirlist:
