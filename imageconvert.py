@@ -1,6 +1,5 @@
 import glob
 import os
-from subprocess import Popen, PIPE
 
 
 def isImageValid(file):
@@ -32,14 +31,30 @@ def postprocess(file):
         print(file, 'didn\'t convert at all')
 
 
+def process_output(output):
+    output = output.replace('\n\n', '\n').split('\n')
+    output = [x for x in output if x]
+    for i in range(len(output)):
+        if output[i]:
+            output[i] = output[i].strip()
+
+    output.remove('Name')
+    return output
+
+
 dirlist = glob.glob('*.jpg')
 count = len(dirlist)
-print(count)
+print('There are %s jpg files to convert' % count)
 for img in dirlist:
     process(img)
 
-command = 'texconv -m 13 -timing -f BC1_UNORM *.jpg'
-print(command)
+gpu_cmd_output = os.popen('wmic path win32_VideoController get name').read()
+gpu_list = process_output(gpu_cmd_output)
+for i in range(len(gpu_list)):
+    print(gpu_list[i], '->', i)
+
+index = int(input('Enter the index of the GPU you wish to use: '))
+command = 'texconv -m 13 -gpu %s -timing -f BC1_UNORM *.jpg' % index
 os.system(command)
 dirlist = glob.glob('*.jpg')
 for img in dirlist:
