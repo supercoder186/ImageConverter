@@ -1,23 +1,15 @@
-from subprocess import Popen, PIPE
 import glob
 import os
+from subprocess import Popen, PIPE
 
 
 def isImageValid(file):
-    proc = Popen(['identify', '-verbose', file], stdout=PIPE, stderr=PIPE)
-    out, err = proc.communicate()
-    exitcode = proc.returncode
-    return str(exitcode) == '0' and str(err, 'utf-8') == ''
+    return os.stat(file).st_size == 11184952
 
 
 def delete(file):
     os.remove(file)
     print('Discarded', file)
-
-
-def append_to_list(img_file_name):
-    list_file.write(img_file_name)
-    list_file.flush()
 
 
 def process(file):
@@ -27,16 +19,28 @@ def process(file):
             delete(file)
         else:
             delete(ddsfile)
-            append_to_list(file)
+
+
+def postprocess(file):
+    ddsfile = file.replace('jpg', 'dds')
+    if os.path.isfile(ddsfile):
+        if isImageValid(ddsfile):
+            delete(file)
+        else:
+            print(file, 'failed to convert properly')
     else:
-        append_to_list(file)
+        print(file, 'didn\'t convert at all')
 
 
-list_file = open('file', 'w')
 dirlist = glob.glob('*.jpg')
 count = len(dirlist)
 print(count)
 for img in dirlist:
     process(img)
 
-list_file.close()
+command = 'texconv -m 13 -gpu 1 -timing -f BC1_UNORM *.jpg'
+print(command)
+os.system(command)
+dirlist = glob.glob('*.jpg')
+for img in dirlist:
+    postprocess(img)
