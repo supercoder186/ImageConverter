@@ -38,7 +38,7 @@ print(count)
 for img in dirlist:
     process(img)
 
-command = 'texconv -m 13 -gpu 1 -timing -f BC1_UNORM *.jpg'
+command = 'texconv -m 13 -timing -f BC1_UNORM *.jpg'
 print(command)
 os.system(command)
 dirlist = glob.glob('*.jpg')
